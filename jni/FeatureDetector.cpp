@@ -7,13 +7,20 @@
 
 #include <jni.h>
 #include <iostream>
+
+#include <opencv2/opencv.hpp>
+
 #include "marshal_cv_FeatureDetector.h"
 
 using namespace std;
 
 JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 		JNIEnv* env, jobject) {
-	char* pat="hello";
+	CvPoint* P1 = new CvPoint();
+	P1->x = 32;
+	delete P1;
+
+	char* pat = "hello";
 	jclass strClass = (env)->FindClass("java/lang/String");
 	jmethodID ctorID = (env)->GetMethodID(strClass, "<init>",
 			"([BLjava/lang/String;)V");
