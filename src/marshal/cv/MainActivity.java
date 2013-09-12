@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.List;
 
 import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
@@ -15,7 +17,6 @@ import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
 import android.view.Menu;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -48,16 +49,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 			int height) {
 		camera.setDisplayOrientation(90);
 
-		try {
-			camera.setPreviewDisplay(holder);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-
 		Camera.Parameters params = camera.getParameters();
 
 		// 处理预览图片长宽比，这里固定写法仅为支持Galaxy S4
 		params.setPictureSize(1280, 720);
+		params.setPreviewSize(1280, 720);
 
 		// 处理自动对焦参数
 		List<String> focusModes = params.getSupportedFocusModes();
@@ -70,49 +66,77 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 			params.setFocusMode(supportedMode);
 		}
 
-		params.setPictureFormat(ImageFormat.JPEG);
-		
 		camera.setParameters(params);
+
+//		camera.setPreviewCallback(new PreviewCallback() {
+//
+//			@Override
+//			public void onPreviewFrame(byte[] data, Camera camera) {
+//				// 从data保存到jgp文件
+//				// Camera.Parameters parameters = camera.getParameters();
+//				// Size size = parameters.getPreviewSize();
+//				// YuvImage image = new YuvImage(data, ImageFormat.NV21,
+//				// size.width, size.height, null);
+//				// Rect rectangle = new Rect();
+//				// rectangle.bottom = size.height;
+//				// rectangle.top = 0;
+//				// rectangle.left = 0;
+//				// rectangle.right = size.width;
+//				// ByteArrayOutputStream out = new ByteArrayOutputStream();
+//				// image.compressToJpeg(rectangle, 100, out);
+//				//
+//				// File photo = new File(
+//				// Environment.getExternalStorageDirectory(), "photo.jpg");
+//				//
+//				// if (photo.exists()) {
+//				// photo.delete();
+//				// }
+//				//
+//				// try {
+//				// FileOutputStream fos = new FileOutputStream(photo.getPath());
+//				//
+//				// fos.write(out.toByteArray());
+//				// fos.close();
+//				// } catch (java.io.IOException e) {
+//				// throw new RuntimeException(e);
+//				// }
+//
+//				// 从data到Bitmap
+//				Size size = camera.getParameters().getPreviewSize();
+//				try {
+//					YuvImage image = new YuvImage(data, ImageFormat.NV21,
+//							size.width, size.height, null);
+//					if (image != null) {
+//						ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//						image.compressToJpeg(new Rect(0, 0, size.width,
+//								size.height), 80, stream);
+//						Bitmap bmp = BitmapFactory.decodeByteArray(
+//								stream.toByteArray(), 0, stream.size());
+//
+//						stream.close();
+//						
+//						File photo = new File(Environment.getExternalStorageDirectory(), "photo1.png");
+//						
+//						if (photo.exists()) {
+//							photo.delete();
+//						}
+//						
+//						FileOutputStream fos = new FileOutputStream(photo.getPath());
+//						bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
+//						Thread.sleep(100);
+////						fos.close();
+//					}
+//				} catch (Exception ex) {
+//					throw new RuntimeException(ex);
+//				}
+//			}
+//		});
 		
-		Log.d("feature_detected",">>>>>>>>>> surface changed....");
-
-		camera.setPreviewCallback(new PreviewCallback() {
-			
-			@Override
-			public void onPreviewFrame(byte[] data, Camera camera) {
-					Log.d("feature_detected",">>>>>>>>>>save file .......");
-					
-					Camera.Parameters parameters = camera.getParameters();
-                    Size size = parameters.getPreviewSize();
-                    YuvImage image = new YuvImage(data, ImageFormat.NV21,
-                            size.width, size.height, null);
-                    Rect rectangle = new Rect();
-                    rectangle.bottom = size.height;
-                    rectangle.top = 0;
-                    rectangle.left = 0;
-                    rectangle.right = size.width;
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    image.compressToJpeg(rectangle, 100, out);
-
-					File photo = new File(Environment
-							.getExternalStorageDirectory(), "photo.jpg");
-
-					if (photo.exists()) {
-						photo.delete();
-					}
-
-					try {
-						FileOutputStream fos = new FileOutputStream(photo
-								.getPath());
-
-						fos.write(out.toByteArray());
-						fos.close();
-						Log.d("feature_detected",">>>>>>>>>>save file: "+photo.getAbsolutePath());
-					} catch (java.io.IOException e) {
-						throw new RuntimeException(e);
-					}
-				}
-		});
+		try {
+			camera.setPreviewDisplay(holder);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 
 		camera.startPreview();
 	}
