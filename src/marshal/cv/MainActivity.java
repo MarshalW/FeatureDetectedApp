@@ -47,13 +47,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
-		camera.setDisplayOrientation(90);
-
 		Camera.Parameters params = camera.getParameters();
 
 		// 处理预览图片长宽比，这里固定写法仅为支持Galaxy S4
 		params.setPictureSize(1280, 720);
-		params.setPreviewSize(1280, 720);
+		params.setPreviewSize(1920, 1080);
 
 		// 处理自动对焦参数
 		List<String> focusModes = params.getSupportedFocusModes();
@@ -68,70 +66,49 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 		camera.setParameters(params);
 
-//		camera.setPreviewCallback(new PreviewCallback() {
-//
-//			@Override
-//			public void onPreviewFrame(byte[] data, Camera camera) {
-//				// 从data保存到jgp文件
-//				// Camera.Parameters parameters = camera.getParameters();
-//				// Size size = parameters.getPreviewSize();
-//				// YuvImage image = new YuvImage(data, ImageFormat.NV21,
-//				// size.width, size.height, null);
-//				// Rect rectangle = new Rect();
-//				// rectangle.bottom = size.height;
-//				// rectangle.top = 0;
-//				// rectangle.left = 0;
-//				// rectangle.right = size.width;
-//				// ByteArrayOutputStream out = new ByteArrayOutputStream();
-//				// image.compressToJpeg(rectangle, 100, out);
-//				//
-//				// File photo = new File(
-//				// Environment.getExternalStorageDirectory(), "photo.jpg");
-//				//
-//				// if (photo.exists()) {
-//				// photo.delete();
-//				// }
-//				//
-//				// try {
-//				// FileOutputStream fos = new FileOutputStream(photo.getPath());
-//				//
-//				// fos.write(out.toByteArray());
-//				// fos.close();
-//				// } catch (java.io.IOException e) {
-//				// throw new RuntimeException(e);
-//				// }
-//
-//				// 从data到Bitmap
-//				Size size = camera.getParameters().getPreviewSize();
-//				try {
-//					YuvImage image = new YuvImage(data, ImageFormat.NV21,
-//							size.width, size.height, null);
-//					if (image != null) {
-//						ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//						image.compressToJpeg(new Rect(0, 0, size.width,
-//								size.height), 80, stream);
-//						Bitmap bmp = BitmapFactory.decodeByteArray(
-//								stream.toByteArray(), 0, stream.size());
-//
-//						stream.close();
-//						
-//						File photo = new File(Environment.getExternalStorageDirectory(), "photo1.png");
-//						
-//						if (photo.exists()) {
-//							photo.delete();
-//						}
-//						
-//						FileOutputStream fos = new FileOutputStream(photo.getPath());
-//						bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
-//						Thread.sleep(100);
-////						fos.close();
-//					}
-//				} catch (Exception ex) {
-//					throw new RuntimeException(ex);
-//				}
-//			}
-//		});
-		
+		surfaceView.getHandler().postDelayed(new Runnable() {
+
+			@Override
+			public void run() {
+				camera.setOneShotPreviewCallback(new PreviewCallback() {
+					@Override
+					public void onPreviewFrame(byte[] data, Camera camera) {
+						// 从data到Bitmap
+						Size size = camera.getParameters().getPreviewSize();
+						try {
+							YuvImage image = new YuvImage(data,
+									ImageFormat.NV21, size.width, size.height,
+									null);
+							if (image != null) {
+								ByteArrayOutputStream stream = new ByteArrayOutputStream();
+								image.compressToJpeg(new Rect(0, 0, size.width,
+										size.height), 80, stream);
+								Bitmap bmp = BitmapFactory.decodeByteArray(
+										stream.toByteArray(), 0, stream.size());
+
+								stream.close();
+
+								File photo = new File(Environment
+										.getExternalStorageDirectory(),
+										"photo.png");
+
+								if (photo.exists()) {
+									photo.delete();
+								}
+
+								FileOutputStream fos = new FileOutputStream(
+										photo.getPath());
+								bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
+								fos.close();
+							}
+						} catch (Exception ex) {
+							throw new RuntimeException(ex);
+						}
+					}
+				});
+			}
+		}, 1000 * 3);
+
 		try {
 			camera.setPreviewDisplay(holder);
 		} catch (IOException e) {
