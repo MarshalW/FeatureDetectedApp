@@ -17,6 +17,7 @@ import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.Menu;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -26,6 +27,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 	SurfaceView surfaceView;
 
 	Camera camera;
+	
+	FeatureDetector featureDetector;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -35,6 +38,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		this.surfaceView = (SurfaceView) findViewById(R.id.surfaceView);
 		this.surfaceView.getHolder().setKeepScreenOn(true);
 		this.surfaceView.getHolder().addCallback(this);
+		
+		featureDetector=new FeatureDetector();
+		Log.d("feature_detector",">>>>>>>>>>"+featureDetector.getOpenCvVersion());
 	}
 
 	@Override
