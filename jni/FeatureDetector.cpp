@@ -36,28 +36,40 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 	return (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
 }
 
-JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview
-  (JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height){
-	jbyte* yuv=env->GetByteArrayElements(data,0);
-	Mat frame(height, width, CV_8UC1, (unsigned char *)yuv);
-
-	FastFeatureDetector fast(40);
-	vector<KeyPoint> v;
+JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
+		JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height) {
+	jbyte* yuv = env->GetByteArrayElements(data, 0);
+	Mat frame(height, width, CV_8UC1, (unsigned char *) yuv);
 
 	clock_t now = clock();
-	fast.detect(frame,v);
+	vector<Point2f> corners;
+	goodFeaturesToTrack(frame, corners, 40, 0.001, 10);
 
 	stringstream strm;
-	strm << "ORB+FLANN耗时（毫秒）：" << (clock() - now) / 1000;
+	strm << "GoodFeatureToTrack 耗时（毫秒）：" << (clock() - now) / 1000;
 	LOGI(strm.str().c_str());
 
 	strm.clear();
 	strm.str("");
-
-	strm<<"vector.size: "<<v.size();
-
-
+	strm << "vector.size: " << corners.size();
 	LOGI(strm.str().c_str());
+
+	/* 使用FAST
+	 FastFeatureDetector fast(40);
+	 vector<KeyPoint> v;
+
+	 clock_t now = clock();
+	 fast.detect(frame,v);
+
+	 stringstream strm;
+	 strm << FAST耗时（毫秒）：" << (clock() - now) / 1000;
+	 LOGI(strm.str().c_str());
+
+	 strm.clear();
+	 strm.str("");
+	 strm<<"vector.size: "<<v.size();
+	 LOGI(strm.str().c_str());
+	 */
 
 	env->ReleaseByteArrayElements(data, yuv, 0);
 }
