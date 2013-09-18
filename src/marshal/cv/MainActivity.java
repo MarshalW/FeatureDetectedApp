@@ -84,6 +84,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 						
 						featureDetector.putCameraPreview(data, size.width,size.height);
 						
+						
 //						
 //						// 从data到Bitmap
 //						Size size = camera.getParameters().getPreviewSize();
