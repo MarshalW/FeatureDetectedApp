@@ -58,7 +58,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		// 处理预览图片长宽比，这里固定写法仅为支持Galaxy S4
 		params.setPictureSize(1280, 720);
 		params.setPreviewSize(1920, 1080);
-
+		
 		// 处理自动对焦参数
 		List<String> focusModes = params.getSupportedFocusModes();
 
@@ -69,7 +69,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		if (!supportedMode.equals("")) {
 			params.setFocusMode(supportedMode);
 		}
-
+		
 		camera.setParameters(params);
 
 		surfaceView.getHandler().postDelayed(new Runnable() {
@@ -79,37 +79,43 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 				camera.setOneShotPreviewCallback(new PreviewCallback() {
 					@Override
 					public void onPreviewFrame(byte[] data, Camera camera) {
-						// 从data到Bitmap
 						Size size = camera.getParameters().getPreviewSize();
-						try {
-							YuvImage image = new YuvImage(data,
-									ImageFormat.NV21, size.width, size.height,
-									null);
-							if (image != null) {
-								ByteArrayOutputStream stream = new ByteArrayOutputStream();
-								image.compressToJpeg(new Rect(0, 0, size.width,
-										size.height), 80, stream);
-								Bitmap bmp = BitmapFactory.decodeByteArray(
-										stream.toByteArray(), 0, stream.size());
-
-								stream.close();
-
-								File photo = new File(Environment
-										.getExternalStorageDirectory(),
-										"photo.png");
-
-								if (photo.exists()) {
-									photo.delete();
-								}
-
-								FileOutputStream fos = new FileOutputStream(
-										photo.getPath());
-								bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
-								fos.close();
-							}
-						} catch (Exception ex) {
-							throw new RuntimeException(ex);
-						}
+						
+						
+						featureDetector.putCameraPreview(data, size.width,size.height);
+						
+//						
+//						// 从data到Bitmap
+//						Size size = camera.getParameters().getPreviewSize();
+//						try {
+//							YuvImage image = new YuvImage(data,
+//									ImageFormat.NV21, size.width, size.height,
+//									null);
+//							if (image != null) {
+//								ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//								image.compressToJpeg(new Rect(0, 0, size.width,
+//										size.height), 80, stream);
+//								Bitmap bmp = BitmapFactory.decodeByteArray(
+//										stream.toByteArray(), 0, stream.size());
+//
+//								stream.close();
+//
+//								File photo = new File(Environment
+//										.getExternalStorageDirectory(),
+//										"photo.png");
+//
+//								if (photo.exists()) {
+//									photo.delete();
+//								}
+//
+//								FileOutputStream fos = new FileOutputStream(
+//										photo.getPath());
+//								bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
+//								fos.close();
+//							}
+//						} catch (Exception ex) {
+//							throw new RuntimeException(ex);
+//						}
 					}
 				});
 			}

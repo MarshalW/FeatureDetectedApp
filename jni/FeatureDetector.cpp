@@ -12,15 +12,17 @@
 
 #include "marshal_cv_FeatureDetector.h"
 
+using namespace cv;
 using namespace std;
 
+//这部分是假的，并不真从OpenCV获取版本信息，仅用于验证java和cpp集成是否正确
 JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
-		JNIEnv* env, jobject) {
+		JNIEnv* env, jobject thiz) {
 	CvPoint* P1 = new CvPoint();
 	P1->x = 32;
 	delete P1;
 
-	char* pat = "hello";
+	char* pat = "v2.4.6";
 	jclass strClass = (env)->FindClass("java/lang/String");
 	jmethodID ctorID = (env)->GetMethodID(strClass, "<init>",
 			"([BLjava/lang/String;)V");
@@ -28,5 +30,10 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 	(env)->SetByteArrayRegion(bytes, 0, strlen(pat), (jbyte*) pat);
 	jstring encoding = (env)->NewStringUTF("UTF8");
 	return (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
+}
+
+JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview
+  (JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height){
+	Mat frame(height, width, CV_8UC1, (unsigned char *)data);
 }
 
