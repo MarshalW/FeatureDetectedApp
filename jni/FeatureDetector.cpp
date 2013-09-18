@@ -34,6 +34,10 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 
 JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview
   (JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height){
-	Mat frame(height, width, CV_8UC1, (unsigned char *)data);
+	jbyte* yuv=env->GetByteArrayElements(data,0);
+	Mat frame(height, width, CV_8UC1, (unsigned char *)yuv);
+
+
+	env->ReleaseByteArrayElements(data, yuv, 0);
 }
 
