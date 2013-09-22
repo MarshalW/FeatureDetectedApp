@@ -19,6 +19,23 @@ using namespace std;
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "feature_detector", __VA_ARGS__))
 
+static vector<Point2f> trackPrevPoints, trackNewPoints;
+
+//Takes a descriptor and turns it into an xy point
+void keypoints2points(const vector<KeyPoint>& in, vector<Point2f>& out) {
+	out.clear();
+	out.reserve(in.size());
+	for (size_t i = 0; i < in.size(); ++i) {
+		out.push_back(in[i].pt);
+	}
+}
+
+void printWord(string s) {
+	stringstream strm;
+	strm << ">>>>>>print word: " << s;
+	LOGI(strm.str().c_str());
+}
+
 //这部分是假的，并不真从OpenCV获取版本信息，仅用于验证java和cpp集成是否正确
 JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 		JNIEnv* env, jobject thiz) {
@@ -40,36 +57,63 @@ JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
 		JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height) {
 	jbyte* yuv = env->GetByteArrayElements(data, 0);
 	Mat frame(height, width, CV_8UC1, (unsigned char *) yuv);
+	Mat frame2(height, width, CV_8UC1, (unsigned char *) yuv);
 
-	clock_t now = clock();
-	vector<Point2f> corners;
-	goodFeaturesToTrack(frame, corners, 40, 0.001, 10);
-
-	stringstream strm;
-	strm << "GoodFeatureToTrack 耗时（毫秒）：" << (clock() - now) / 1000;
-	LOGI(strm.str().c_str());
-
-	strm.clear();
-	strm.str("");
-	strm << "vector.size: " << corners.size();
-	LOGI(strm.str().c_str());
-
-	/* 使用FAST
-	 FastFeatureDetector fast(40);
-	 vector<KeyPoint> v;
-
+	/*
+	 //使用GoodFeaturesToTrack
 	 clock_t now = clock();
-	 fast.detect(frame,v);
+	 vector<Point2f> corners;
+	 goodFeaturesToTrack(frame, corners, 40, 0.001, 10);
 
 	 stringstream strm;
-	 strm << FAST耗时（毫秒）：" << (clock() - now) / 1000;
+	 strm << "GoodFeatureToTrack 耗时（毫秒）：" << (clock() - now) / 1000;
 	 LOGI(strm.str().c_str());
 
 	 strm.clear();
 	 strm.str("");
-	 strm<<"vector.size: "<<v.size();
+	 strm << "vector.size: " << corners.size();
 	 LOGI(strm.str().c_str());
 	 */
+
+	//使用FAST
+	FastFeatureDetector fast(40);
+	vector<KeyPoint> v;
+
+	clock_t now = clock();
+	fast.detect(frame, v);
+
+	stringstream strm;
+	strm << "FAST耗时（毫秒）：" << (clock() - now) / 1000;
+	LOGI(strm.str().c_str());
+
+	strm.clear();
+	strm.str("");
+	strm << "vector.size: " << v.size();
+	LOGI(strm.str().c_str());
+
+	keypoints2points(v, trackPrevPoints);
+
+	vector<uchar> status;
+	vector<float> err;
+	Size winSize(20, 20);
+	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 0.1);
+
+	calcOpticalFlowPyrLK(frame, frame2, trackPrevPoints, trackNewPoints, status,
+			err, winSize, 3, termcrit, 0);
+
+	strm.clear();
+	strm.str("");
+	strm << "new vector.size: " << trackNewPoints.size();
+	LOGI(strm.str().c_str());
+
+	strm.clear();
+	strm.str("");
+	strm << "calcOpticalFlowPyrLK: " << (clock() - now) / 1000;
+	LOGI(strm.str().c_str());
+
+	string s = "你好";
+	string* a = &s;
+	printWord(*a);
 
 	env->ReleaseByteArrayElements(data, yuv, 0);
 }
