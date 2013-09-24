@@ -18,10 +18,10 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion
 /*
  * Class:     marshal_cv_FeatureDetector
  * Method:    putCameraPreview
- * Signature: ([BII)V
+ * Signature: ([B[BII)V
  */
 JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
+  (JNIEnv *, jobject, jbyteArray, jbyteArray, jint, jint);
 
 #ifdef __cplusplus
 }

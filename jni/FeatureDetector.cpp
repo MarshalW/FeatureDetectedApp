@@ -54,10 +54,13 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 }
 
 JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
-		JNIEnv * env, jobject thiz, jbyteArray data, jint width, jint height) {
-	jbyte* yuv = env->GetByteArrayElements(data, 0);
+		JNIEnv * env, jobject thiz, jbyteArray currFrame, jbyteArray prevFrame,
+		jint width, jint height) {
+	jbyte* yuv = env->GetByteArrayElements(currFrame, 0);
 	Mat frame(height, width, CV_8UC1, (unsigned char *) yuv);
-	Mat frame2(height, width, CV_8UC1, (unsigned char *) yuv);
+
+	jbyte* yuv2 = env->GetByteArrayElements(prevFrame, 0);
+	Mat frame2(height, width, CV_8UC1, (unsigned char *) yuv2);
 
 	/*
 	 //使用GoodFeaturesToTrack
@@ -75,8 +78,8 @@ JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
 	 LOGI(strm.str().c_str());
 	 */
 
-	//使用FAST
-	FastFeatureDetector fast(40);
+	//使用FAST算法获取角点
+	FastFeatureDetector fast(150);
 	vector<KeyPoint> v;
 
 	clock_t now = clock();
@@ -97,6 +100,7 @@ JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
 	vector<float> err;
 	Size winSize(20, 20);
 	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 0.1);
+	Point2f newCenter(0, 0), prevCenter(0, 0), currShift;
 
 	calcOpticalFlowPyrLK(frame, frame2, trackPrevPoints, trackNewPoints, status,
 			err, winSize, 3, termcrit, 0);
@@ -108,13 +112,43 @@ JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
 
 	strm.clear();
 	strm.str("");
-	strm << "calcOpticalFlowPyrLK: " << (clock() - now) / 1000;
+	strm << "calcOpticalFlowPyrLK耗时: " << (clock() - now) / 1000;
+	LOGI(strm.str().c_str());
+
+	size_t i, k;
+	for (i = k = 0; i < trackNewPoints.size(); i++) {
+		if (!status[i])
+			continue;
+
+		prevCenter += trackPrevPoints[i];
+		newCenter += trackNewPoints[i];
+		trackNewPoints[k] = trackNewPoints[i];
+		k++;
+	}
+	trackNewPoints.resize(k);
+
+	strm.clear();
+	strm.str("");
+	strm << ">>>>>>>>k: " << k << " -- prevCenter: "
+			<< prevCenter * (1.0 / (float) k) << " || " << " newCenter: "
+			<< newCenter * (1.0 / (float) k) << " || 平均偏移量："
+			<< (newCenter * (1.0 / (float) k) - prevCenter * (1.0 / (float) k));
 	LOGI(strm.str().c_str());
 
 	string s = "你好";
 	string* a = &s;
 	printWord(*a);
 
-	env->ReleaseByteArrayElements(data, yuv, 0);
+	//测试一下对point对象运算符重载（减号）
+	Point2f p1(0, 0), p2(1, 1), p3;
+	p3 = p2 - p1;
+	strm.clear();
+	strm.str("");
+	strm << ">>>>>>>>p3: " << p3;
+	LOGI(strm.str().c_str());
+
+	//使用完毕要释放内存，照着做的，什么机制？
+	env->ReleaseByteArrayElements(currFrame, yuv, 0);
+	env->ReleaseByteArrayElements(prevFrame, yuv2, 0);
 }
 

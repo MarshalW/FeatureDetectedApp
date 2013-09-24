@@ -1,7 +1,9 @@
 package marshal.cv;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
@@ -27,7 +29,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 	SurfaceView surfaceView;
 
 	Camera camera;
-	
+
 	FeatureDetector featureDetector;
 
 	@Override
@@ -38,9 +40,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		this.surfaceView = (SurfaceView) findViewById(R.id.surfaceView);
 		this.surfaceView.getHolder().setKeepScreenOn(true);
 		this.surfaceView.getHolder().addCallback(this);
-		
-		featureDetector=new FeatureDetector();
-		Log.d("feature_detector",">>>>>>>>>>"+featureDetector.getOpenCvVersion());
+
+		featureDetector = new FeatureDetector();
+		Log.d("feature_detector",
+				">>>>>>>>>>" + featureDetector.getOpenCvVersion());
 	}
 
 	@Override
@@ -58,7 +61,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		// 处理预览图片长宽比，这里固定写法仅为支持Galaxy S4
 		params.setPictureSize(1280, 720);
 		params.setPreviewSize(1920, 1080);
-		
+
 		// 处理自动对焦参数
 		List<String> focusModes = params.getSupportedFocusModes();
 
@@ -69,7 +72,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		if (!supportedMode.equals("")) {
 			params.setFocusMode(supportedMode);
 		}
-		
+
 		camera.setParameters(params);
 
 		surfaceView.getHandler().postDelayed(new Runnable() {
@@ -80,41 +83,92 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 					@Override
 					public void onPreviewFrame(byte[] data, Camera camera) {
 						Size size = camera.getParameters().getPreviewSize();
-						
-						
-						featureDetector.putCameraPreview(data, size.width,size.height);
-//						
-//						// 从data到Bitmap
-//						Size size = camera.getParameters().getPreviewSize();
-//						try {
-//							YuvImage image = new YuvImage(data,
-//									ImageFormat.NV21, size.width, size.height,
-//									null);
-//							if (image != null) {
-//								ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//								image.compressToJpeg(new Rect(0, 0, size.width,
-//										size.height), 80, stream);
-//								Bitmap bmp = BitmapFactory.decodeByteArray(
-//										stream.toByteArray(), 0, stream.size());
-//
-//								stream.close();
-//
-//								File photo = new File(Environment
-//										.getExternalStorageDirectory(),
-//										"photo.png");
-//
-//								if (photo.exists()) {
-//									photo.delete();
-//								}
-//
-//								FileOutputStream fos = new FileOutputStream(
-//										photo.getPath());
-//								bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
-//								fos.close();
-//							}
-//						} catch (Exception ex) {
-//							throw new RuntimeException(ex);
-//						}
+
+						// 使用外存的模拟以前帧数据
+						File dataFile = new File(Environment
+								.getExternalStorageDirectory(), "frame.dat");
+						byte[] prevData = new byte[(int) dataFile.length()];
+
+						try {
+							FileInputStream fileInputStream = new FileInputStream(
+									dataFile);
+
+							fileInputStream.read(prevData);
+							fileInputStream.close();
+						} catch (Exception ex) {
+							throw new RuntimeException(ex);
+						}
+
+						featureDetector.putCameraPreview(data, prevData,
+								size.width, size.height);
+
+						if (dataFile.exists()) {
+							dataFile.delete();
+						}
+						try {
+							FileOutputStream fos = new FileOutputStream(
+									dataFile.getPath());
+							ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(
+									data.length);
+							byteArrayOutputStream.write(data);
+							byteArrayOutputStream.writeTo(fos);
+
+						} catch (Exception ex) {
+							throw new RuntimeException(ex);
+						}
+
+						// //帧数据保存到外存上
+						// File dataFile = new File(Environment
+						// .getExternalStorageDirectory(), "frame.dat");
+						//
+						// if (dataFile.exists()) {
+						// dataFile.delete();
+						// }
+						// try {
+						// FileOutputStream fos = new FileOutputStream(
+						// dataFile.getPath());
+						// ByteArrayOutputStream byteArrayOutputStream=new
+						// ByteArrayOutputStream(data.length);
+						// byteArrayOutputStream.write(data);
+						// byteArrayOutputStream.writeTo(fos);
+						//
+						// } catch (Exception ex) {
+						// throw new RuntimeException(ex);
+						// }
+
+						//
+						// // 从data到Bitmap
+						// Size size = camera.getParameters().getPreviewSize();
+						// try {
+						// YuvImage image = new YuvImage(data,
+						// ImageFormat.NV21, size.width, size.height,
+						// null);
+						// if (image != null) {
+						// ByteArrayOutputStream stream = new
+						// ByteArrayOutputStream();
+						// image.compressToJpeg(new Rect(0, 0, size.width,
+						// size.height), 80, stream);
+						// Bitmap bmp = BitmapFactory.decodeByteArray(
+						// stream.toByteArray(), 0, stream.size());
+						//
+						// stream.close();
+						//
+						// File photo = new File(Environment
+						// .getExternalStorageDirectory(),
+						// "photo.png");
+						//
+						// if (photo.exists()) {
+						// photo.delete();
+						// }
+						//
+						// FileOutputStream fos = new FileOutputStream(
+						// photo.getPath());
+						// bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
+						// fos.close();
+						// }
+						// } catch (Exception ex) {
+						// throw new RuntimeException(ex);
+						// }
 					}
 				});
 			}
