@@ -17,11 +17,11 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion
 
 /*
  * Class:     marshal_cv_FeatureDetector
- * Method:    putCameraPreview
- * Signature: ([B[BII)V
+ * Method:    isOpticalFlowMoved
+ * Signature: ([BII)Z
  */
-JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview
-  (JNIEnv *, jobject, jbyteArray, jbyteArray, jint, jint);
+JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved
+  (JNIEnv *, jobject, jbyteArray, jint, jint);
 
 #ifdef __cplusplus
 }

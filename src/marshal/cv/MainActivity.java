@@ -1,30 +1,28 @@
 package marshal.cv;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
 import android.app.Activity;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
-import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
-import android.view.Menu;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.TextView;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
+	
+	String[] states={
+			"静止..",
+			"活动.."
+	};
+	
+	int moveCount;
 
 	SurfaceView surfaceView;
 
@@ -32,30 +30,68 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 	FeatureDetector featureDetector;
 
+	LooperThread looperThread;
+
+	boolean isMoved;
+
+	TextView textView;
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
 		this.surfaceView = (SurfaceView) findViewById(R.id.surfaceView);
-		this.surfaceView.getHolder().setKeepScreenOn(true);
+		// this.surfaceView.getHolder().setKeepScreenOn(true);
 		this.surfaceView.getHolder().addCallback(this);
+
+		textView = (TextView) findViewById(R.id.moveState);
 
 		featureDetector = new FeatureDetector();
 		Log.d("feature_detector",
-				">>>>>>>>>>" + featureDetector.getOpenCvVersion());
+				">>>>>>>>>> on create, " + featureDetector.getOpenCvVersion());
 	}
 
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
+	protected void onResume() {
+		super.onResume();
+		looperThread = new LooperThread();
+		looperThread.start();
+		Log.d("feature_detector", ">>>>>>>>>>on resume");
+
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+		Log.d("feature_detector", ">>>>>>>>>>on pause");
+		looperThread.mHandler.post(new Runnable() {
+			@Override
+			public void run() {
+				Looper.myLooper().quit();
+			}
+		});
+	}
+
+	@Override
+	protected void onStart() {
+		super.onStart();
+		Log.d("feature_detector", ">>>>>>>>>>on start");
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		Log.d("feature_detector", ">>>>>>>>>>on stop");
 	}
 
 	@Override
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
+		if (width < height) {// 如果不是横屏情况下，啥也不做
+			return;
+		}
+		Log.d("feature_detector", ">>>>>>surface changed ..");
 		Camera.Parameters params = camera.getParameters();
 
 		// 处理预览图片长宽比，这里固定写法仅为支持Galaxy S4
@@ -79,100 +115,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 			@Override
 			public void run() {
-				camera.setOneShotPreviewCallback(new PreviewCallback() {
-					@Override
-					public void onPreviewFrame(byte[] data, Camera camera) {
-						Size size = camera.getParameters().getPreviewSize();
-
-						// 使用外存的模拟以前帧数据
-						File dataFile = new File(Environment
-								.getExternalStorageDirectory(), "frame.dat");
-						byte[] prevData = new byte[(int) dataFile.length()];
-
-						try {
-							FileInputStream fileInputStream = new FileInputStream(
-									dataFile);
-
-							fileInputStream.read(prevData);
-							fileInputStream.close();
-						} catch (Exception ex) {
-							throw new RuntimeException(ex);
-						}
-
-						featureDetector.putCameraPreview(data, prevData,
-								size.width, size.height);
-
-						if (dataFile.exists()) {
-							dataFile.delete();
-						}
-						try {
-							FileOutputStream fos = new FileOutputStream(
-									dataFile.getPath());
-							ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(
-									data.length);
-							byteArrayOutputStream.write(data);
-							byteArrayOutputStream.writeTo(fos);
-
-						} catch (Exception ex) {
-							throw new RuntimeException(ex);
-						}
-
-						// //帧数据保存到外存上
-						// File dataFile = new File(Environment
-						// .getExternalStorageDirectory(), "frame.dat");
-						//
-						// if (dataFile.exists()) {
-						// dataFile.delete();
-						// }
-						// try {
-						// FileOutputStream fos = new FileOutputStream(
-						// dataFile.getPath());
-						// ByteArrayOutputStream byteArrayOutputStream=new
-						// ByteArrayOutputStream(data.length);
-						// byteArrayOutputStream.write(data);
-						// byteArrayOutputStream.writeTo(fos);
-						//
-						// } catch (Exception ex) {
-						// throw new RuntimeException(ex);
-						// }
-
-						//
-						// // 从data到Bitmap
-						// Size size = camera.getParameters().getPreviewSize();
-						// try {
-						// YuvImage image = new YuvImage(data,
-						// ImageFormat.NV21, size.width, size.height,
-						// null);
-						// if (image != null) {
-						// ByteArrayOutputStream stream = new
-						// ByteArrayOutputStream();
-						// image.compressToJpeg(new Rect(0, 0, size.width,
-						// size.height), 80, stream);
-						// Bitmap bmp = BitmapFactory.decodeByteArray(
-						// stream.toByteArray(), 0, stream.size());
-						//
-						// stream.close();
-						//
-						// File photo = new File(Environment
-						// .getExternalStorageDirectory(),
-						// "photo.png");
-						//
-						// if (photo.exists()) {
-						// photo.delete();
-						// }
-						//
-						// FileOutputStream fos = new FileOutputStream(
-						// photo.getPath());
-						// bmp.compress(Bitmap.CompressFormat.PNG, 90, fos);
-						// fos.close();
-						// }
-						// } catch (Exception ex) {
-						// throw new RuntimeException(ex);
-						// }
-					}
-				});
+				checkMoved();
 			}
-		}, 1000 * 3);
+		}, 3 * 1000);
 
 		try {
 			camera.setPreviewDisplay(holder);
@@ -183,17 +128,68 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 		camera.startPreview();
 	}
 
+	private void setMoved(boolean moved) {
+		this.isMoved = moved;
+		
+		if(!this.isMoved){
+			moveCount++;
+			if(moveCount>2){
+				textView.setText(states[0]);	
+			}
+		}else{
+			moveCount=0;
+			textView.setText(states[1]);
+		}
+		
+		checkMoved();
+	}
+
+	private void checkMoved() {
+		looperThread.mHandler.post(new Runnable() {
+
+			@Override
+			public void run() {
+				Log.d("feature_detector", ">>>>set on shot preview, thread: "
+						+ Thread.currentThread());
+				camera.setOneShotPreviewCallback(new PreviewCallback() {
+					@Override
+					public void onPreviewFrame(byte[] data, Camera camera) {
+						Size size = camera.getParameters().getPreviewSize();
+						setMoved(featureDetector.isOpticalFlowMoved(data,
+								size.width, size.height));
+						Log.d("feature_detector", ">>>>>>moved? " + isMoved
+								+ ", thread: " + Thread.currentThread());
+					}
+				});
+			}
+		});
+	}
+
 	@Override
 	public void surfaceCreated(SurfaceHolder holder) {
+		Log.d("feature_detector", ">>>>>>surface created ..");
 		camera = Camera.open();
 	}
 
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
+		Log.d("feature_detector", ">>>>>>surface destroyed ..");
 		camera.setPreviewCallback(null);
 		camera.stopPreview();
 		camera.release();
 		camera = null;
+	}
+
+	class LooperThread extends Thread {
+		public Handler mHandler;
+
+		@Override
+		public void run() {
+			Looper.prepare();
+			mHandler = new Handler();
+			Looper.loop();
+			Log.d("feature_detector", ">>>>>>thread quit.");
+		}
 	}
 
 }

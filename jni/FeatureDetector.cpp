@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include <opencv2/opencv.hpp>
-
 #include <android/log.h>
 
 #include "marshal_cv_FeatureDetector.h"
@@ -19,7 +18,9 @@ using namespace std;
 
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "feature_detector", __VA_ARGS__))
 
-static vector<Point2f> trackPrevPoints, trackNewPoints;
+static vector<Point2f> trackPrevPoints, trackNewPoints, offsetPoints;
+
+static Mat prevFrame;
 
 //Takes a descriptor and turns it into an xy point
 void keypoints2points(const vector<KeyPoint>& in, vector<Point2f>& out) {
@@ -53,102 +54,101 @@ JNIEXPORT jstring JNICALL Java_marshal_cv_FeatureDetector_getOpenCvVersion(
 	return (jstring) (env)->NewObject(strClass, ctorID, bytes, encoding);
 }
 
-JNIEXPORT void JNICALL Java_marshal_cv_FeatureDetector_putCameraPreview(
-		JNIEnv * env, jobject thiz, jbyteArray currFrame, jbyteArray prevFrame,
-		jint width, jint height) {
-	jbyte* yuv = env->GetByteArrayElements(currFrame, 0);
+JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved(
+		JNIEnv * env, jobject thiz, jbyteArray frameData, jint width,
+		jint height) {
+	jbyte* yuv = env->GetByteArrayElements(frameData, 0);
 	Mat frame(height, width, CV_8UC1, (unsigned char *) yuv);
+	bool isMoved = false;
 
-	jbyte* yuv2 = env->GetByteArrayElements(prevFrame, 0);
-	Mat frame2(height, width, CV_8UC1, (unsigned char *) yuv2);
+	if (!prevFrame.empty()) {
+		//使用FAST算法获取角点
+		FastFeatureDetector fast(100);
+		vector<KeyPoint> v;
 
-	/*
-	 //使用GoodFeaturesToTrack
-	 clock_t now = clock();
-	 vector<Point2f> corners;
-	 goodFeaturesToTrack(frame, corners, 40, 0.001, 10);
+		clock_t now = clock();
+		fast.detect(prevFrame, v);
 
-	 stringstream strm;
-	 strm << "GoodFeatureToTrack 耗时（毫秒）：" << (clock() - now) / 1000;
-	 LOGI(strm.str().c_str());
+		stringstream strm;
+		strm << "FAST耗时（毫秒）：" << (clock() - now) / 1000;
+		LOGI(strm.str().c_str());
 
-	 strm.clear();
-	 strm.str("");
-	 strm << "vector.size: " << corners.size();
-	 LOGI(strm.str().c_str());
-	 */
+		strm.clear();
+		strm.str("");
+		strm << "vector.size: " << v.size();
+		LOGI(strm.str().c_str());
 
-	//使用FAST算法获取角点
-	FastFeatureDetector fast(150);
-	vector<KeyPoint> v;
+		if (v.size() > 0) {
+			keypoints2points(v, trackPrevPoints);
 
-	clock_t now = clock();
-	fast.detect(frame, v);
+			vector<uchar> status;
+			vector<float> err;
+			Size winSize(20, 20);
+			TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 0.1);
+			Point2f newCenter(0, 0), prevCenter(0, 0), currShift;
 
-	stringstream strm;
-	strm << "FAST耗时（毫秒）：" << (clock() - now) / 1000;
-	LOGI(strm.str().c_str());
+			calcOpticalFlowPyrLK(prevFrame, frame, trackPrevPoints,
+					trackNewPoints, status, err, winSize, 3, termcrit, 0);
 
-	strm.clear();
-	strm.str("");
-	strm << "vector.size: " << v.size();
-	LOGI(strm.str().c_str());
+			strm.clear();
+			strm.str("");
+			strm << "new vector.size: " << trackNewPoints.size();
+			LOGI(strm.str().c_str());
 
-	keypoints2points(v, trackPrevPoints);
+			strm.clear();
+			strm.str("");
+			strm << "calcOpticalFlowPyrLK耗时: " << (clock() - now) / 1000;
+			LOGI(strm.str().c_str());
 
-	vector<uchar> status;
-	vector<float> err;
-	Size winSize(20, 20);
-	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 0.1);
-	Point2f newCenter(0, 0), prevCenter(0, 0), currShift;
+			size_t i, k;
+			for (i = k = 0; i < trackNewPoints.size(); i++) {
+				if (!status[i])
+					continue;
 
-	calcOpticalFlowPyrLK(frame, frame2, trackPrevPoints, trackNewPoints, status,
-			err, winSize, 3, termcrit, 0);
+				prevCenter += trackPrevPoints[i];
+				newCenter += trackNewPoints[i];
+				trackNewPoints[k] = trackNewPoints[i];
+				k++;
+			}
+			trackNewPoints.resize(k);
 
-	strm.clear();
-	strm.str("");
-	strm << "new vector.size: " << trackNewPoints.size();
-	LOGI(strm.str().c_str());
+//			swap(trackNewPoints, trackPrevPoints);
 
-	strm.clear();
-	strm.str("");
-	strm << "calcOpticalFlowPyrLK耗时: " << (clock() - now) / 1000;
-	LOGI(strm.str().c_str());
+			currShift = newCenter * (1.0 / (float) k)
+					- prevCenter * (1.0 / (float) k);
 
-	size_t i, k;
-	for (i = k = 0; i < trackNewPoints.size(); i++) {
-		if (!status[i])
-			continue;
+			strm.clear();
+			strm.str("");
+			strm << ">>>>>>>>k: " << k << " -- prevCenter: "
+					<< prevCenter * (1.0 / (float) k) << " || "
+					<< " newCenter: " << newCenter * (1.0 / (float) k)
+					<< " || 平均偏移量：" << currShift << " >> x+y: "
+					<< (currShift.x + currShift.y);
+			LOGI(strm.str().c_str());
 
-		prevCenter += trackPrevPoints[i];
-		newCenter += trackNewPoints[i];
-		trackNewPoints[k] = trackNewPoints[i];
-		k++;
+			isMoved=((currShift.x + currShift.y))>1.5;
+
+		}
+
+//		string s = "你好";
+//		string* a = &s;
+//		printWord(*a);
+//
+//		//测试一下对point对象运算符重载（减号）
+//		Point2f p1(0, 0), p2(1, 1), p3;
+//		p3 = p2 - p1;
+//		strm.clear();
+//		strm.str("");
+//		strm << ">>>>>>>>p3: " << p3;
+//		LOGI(strm.str().c_str());
+
 	}
-	trackNewPoints.resize(k);
-
-	strm.clear();
-	strm.str("");
-	strm << ">>>>>>>>k: " << k << " -- prevCenter: "
-			<< prevCenter * (1.0 / (float) k) << " || " << " newCenter: "
-			<< newCenter * (1.0 / (float) k) << " || 平均偏移量："
-			<< (newCenter * (1.0 / (float) k) - prevCenter * (1.0 / (float) k));
-	LOGI(strm.str().c_str());
-
-	string s = "你好";
-	string* a = &s;
-	printWord(*a);
-
-	//测试一下对point对象运算符重载（减号）
-	Point2f p1(0, 0), p2(1, 1), p3;
-	p3 = p2 - p1;
-	strm.clear();
-	strm.str("");
-	strm << ">>>>>>>>p3: " << p3;
-	LOGI(strm.str().c_str());
+//	prevFrame = frame;
+	frame.copyTo(prevFrame);
 
 	//使用完毕要释放内存，照着做的，什么机制？
-	env->ReleaseByteArrayElements(currFrame, yuv, 0);
-	env->ReleaseByteArrayElements(prevFrame, yuv2, 0);
+	env->ReleaseByteArrayElements(frameData, yuv, 0);
+
+	return (jboolean) isMoved;
 }
 
