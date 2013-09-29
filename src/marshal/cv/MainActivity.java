@@ -16,12 +16,9 @@ import android.view.SurfaceView;
 import android.widget.TextView;
 
 public class MainActivity extends Activity implements SurfaceHolder.Callback {
-	
-	String[] states={
-			"静止..",
-			"活动.."
-	};
-	
+
+	String[] states = { "停止..", "活动.." };
+
 	int moveCount;
 
 	SurfaceView surfaceView;
@@ -130,17 +127,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 
 	private void setMoved(boolean moved) {
 		this.isMoved = moved;
-		
-		if(!this.isMoved){
+
+		if (!this.isMoved) {
 			moveCount++;
-			if(moveCount>2){
-				textView.setText(states[0]);	
+			if (moveCount > 5) {
+				textView.setText(states[0]);
 			}
-		}else{
-			moveCount=0;
+		} else {
+			moveCount = 0;
 			textView.setText(states[1]);
 		}
-		
+
 		checkMoved();
 	}
 
@@ -158,7 +155,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback {
 						setMoved(featureDetector.isOpticalFlowMoved(data,
 								size.width, size.height));
 						Log.d("feature_detector", ">>>>>>moved? " + isMoved
-								+ ", thread: " + Thread.currentThread());
+								+ ", w,h: " + size.width + ", " + size.height);
 					}
 				});
 			}

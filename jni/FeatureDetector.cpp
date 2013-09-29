@@ -61,15 +61,29 @@ JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved(
 	Mat frame(height, width, CV_8UC1, (unsigned char *) yuv);
 	bool isMoved = false;
 
+	stringstream strm;
+	strm << "frame.cols,rows: " << frame.cols << ", " << frame.rows;
+	LOGI(strm.str().c_str());
+
+	Size dsize = Size(frame.cols * 0.3, frame.rows * 0.3);
+	Mat frame2 = Mat(dsize, CV_8UC1);
+	resize(frame, frame2, dsize);
+
+	strm.clear();
+	strm.str("");
+	strm << "frame2.cols,rows: " << frame2.cols << ", " << frame2.rows;
+	LOGI(strm.str().c_str());
+
 	if (!prevFrame.empty()) {
 		//使用FAST算法获取角点
-		FastFeatureDetector fast(100);
+		FastFeatureDetector fast(40);
 		vector<KeyPoint> v;
 
 		clock_t now = clock();
 		fast.detect(prevFrame, v);
 
-		stringstream strm;
+		strm.clear();
+		strm.str("");
 		strm << "FAST耗时（毫秒）：" << (clock() - now) / 1000;
 		LOGI(strm.str().c_str());
 
@@ -83,11 +97,11 @@ JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved(
 
 			vector<uchar> status;
 			vector<float> err;
-			Size winSize(20, 20);
+			Size winSize(15, 15);
 			TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 10, 0.1);
 			Point2f newCenter(0, 0), prevCenter(0, 0), currShift;
 
-			calcOpticalFlowPyrLK(prevFrame, frame, trackPrevPoints,
+			calcOpticalFlowPyrLK(prevFrame, frame2, trackPrevPoints,
 					trackNewPoints, status, err, winSize, 3, termcrit, 0);
 
 			strm.clear();
@@ -126,7 +140,7 @@ JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved(
 					<< (currShift.x + currShift.y);
 			LOGI(strm.str().c_str());
 
-			isMoved=((currShift.x + currShift.y))>1.5;
+			isMoved = ((currShift.x + currShift.y)) > 1.5;
 
 		}
 
@@ -144,7 +158,7 @@ JNIEXPORT jboolean JNICALL Java_marshal_cv_FeatureDetector_isOpticalFlowMoved(
 
 	}
 //	prevFrame = frame;
-	frame.copyTo(prevFrame);
+	frame2.copyTo(prevFrame);
 
 	//使用完毕要释放内存，照着做的，什么机制？
 	env->ReleaseByteArrayElements(frameData, yuv, 0);

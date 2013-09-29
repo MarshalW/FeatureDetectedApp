@@ -19,7 +19,7 @@
             android:id="@+id/moveState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="静止"
+            android:text="停止"
             android:textSize="@dimen/bigMoveState" 
             android:textColor="#ffab0d"/>
 
